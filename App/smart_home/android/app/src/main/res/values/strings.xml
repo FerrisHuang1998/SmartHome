@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="facebook_app_id">1244723026045908</string>
+    <string name="app_name">smart_home</string>
+    <string name="fb_login_protocol_scheme">fb1244723026045908</string>
+</resources>
