@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -6,13 +8,22 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'Account/Account.dart';
 
-//TODO: email login method
+/*TODO:
+  Drawer: Only manage account information
+*/
+
+String accountName = '', accountID = '', accountPic = '';
 
 Future<void> main() async{
   WidgetsFlutterBinding.ensureInitialized();
   FirebaseApp app = await Firebase.initializeApp();
-  //FirebaseFirestore firestore = FirebaseFirestore.instanceFor(app: app);
+  await getUserInfo();
   runApp(MyApp());
+}
+
+Future<void> getUserInfo() async{
+  print('Get user info');
+  //get preserve user information
 }
 
 class MyApp extends StatelessWidget {
@@ -35,114 +46,184 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class SmartHomeMainPage extends StatelessWidget {
+class SmartHomeMainPage extends StatefulWidget {
   SmartHomeMainPage({Key key}) : super(key: key);
-
+  SmartHomeMainPageState createState() => SmartHomeMainPageState();
+}
+class SmartHomeMainPageState extends State<SmartHomeMainPage>{
+  FirebaseFirestore firestore = FirebaseFirestore.instance;
+  String content = 'Wait for build';
+  List<String> dataCategoriesList = <String>[];
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Smart Home"),
+        title: Text('Smart Home'),
       ),
-      body: SmartHomeMainBody(),
-      drawer: SmartHomeMainDrawer(
-        accountName: '',
-        accountID: '',
+      body: RefreshIndicator(
+        onRefresh: refreshStreamData,
+        backgroundColor: Colors.white,
+        color: Colors.red,
+        child: ListView(
+          children: dataCategoriesList.map((element){
+            return ListTile(
+              title: Text(element),
+              onTap: () => getStreamData(element),
+            );
+          }).toList(),
+        ),
       ),
-    );
-  }
-}
-
-class SmartHomeMainDrawer extends StatelessWidget{
-  final String accountName, accountID;
-
-  SmartHomeMainDrawer({Key key, this.accountName, this.accountID});
-
-  @override
-  Widget build(BuildContext context) {
-    return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          UserAccountsDrawerHeader(
-            accountName: Text(
-              '${accountName.isEmpty ? 'User' : accountName}',
-              style: TextStyle(
-                  fontSize: 20,
-                  color: Colors.white
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            UserAccountsDrawerHeader(
+              accountName: Text(
+                '${(accountName.isEmpty || accountName == null) ? '未登入' : accountName}',
+                style: TextStyle(
+                    fontSize: 20,
+                    color: Colors.white
+                ),
+              ),
+              accountEmail: Text(
+                '${(accountID.isEmpty || accountID == null) ? '' : accountID}',
+                style: TextStyle(
+                    fontSize: 20,
+                    color: Colors.white
+                ),
+              ),
+              currentAccountPicture: getUserImage(),
+              decoration: BoxDecoration(
+                color: Colors.blue,
               ),
             ),
-            accountEmail: Text(
-              '${accountID.isEmpty ? '' : accountID}',
-              style: TextStyle(
-                  fontSize: 20,
-                  color: Colors.white
-              ),
-            ),
-            currentAccountPicture: Icon(
-              Icons.account_circle,
-              color: Colors.white,
-              size: 72,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.blue,
-            ),
-          ),
-          ListTile(
-            leading: Icon(Icons.login),
-            title: Text("帳戶"),
-            onTap: () async{
-              dynamic result = await Navigator.of(context).pushNamed(
-                  '/account',
-                  arguments: {
-                    'name': '$accountName',
-                    'id': '$accountID'
+            ListTile(
+              leading: Icon(Icons.login),
+              title: Text("帳戶"),
+              onTap: () async{
+                dynamic result = await Navigator.of(context).pushNamed(
+                    '/account',
+                    arguments: {
+                      'name': '$accountName',
+                      'id': '$accountID',
+                      'pic': '$accountPic'
+                    }
+                );
+
+                if(result != null){
+                  print('The return data is: ${result.toString()}');
+                  try{
+                    setState(() {
+                      accountName = result['name'].toString();
+                      accountID = result['id'].toString();
+                      accountPic = result['pic'].toString();
+                    });
                   }
-              );
-
-              if(result != null){
-                print('The return data is: ${result.toString()}');
-                //call data changed for update user account
-              }
-            },
-          ),
-          ListTile(
-            leading: Icon(FontAwesomeIcons.water),
-            title: Text('濕度'),
-            onTap: (){
-              //跳轉到濕度頁面
-            },
-          ),
-          ListTile(
-            leading: Icon(FontAwesomeIcons.temperatureHigh),
-            title: Text('溫度'),
-            onTap: (){
-              //跳轉到溫度頁面
-            },
-          )
-        ],
+                  catch(e) {
+                    print('Return result exception: ' + e.toString());
+                  }
+                  //call data changed for update user account
+                }
+              },
+            ),
+            ListTile(
+              leading: Icon(FontAwesomeIcons.water),
+              title: Text('新增'),
+              onTap: () async{
+                if(accountName != null && accountName.isNotEmpty){
+                  await addNewDataCategories();
+                  setState(() {
+                    print('新增成功');
+                    //change bottom navigation bar
+                  });
+                }
+                else{
+                  //尚未登入event
+                }
+              },
+            ),
+            ListTile(
+              leading: Icon(FontAwesomeIcons.temperatureHigh),
+              title: Text('移除'),
+              onTap: () async{
+                await removeDataCategories();
+                print('移除成功');
+              },
+            )
+          ],
+        ),
       ),
     );
   }
-}
 
-
-class SmartHomeMainBody extends StatefulWidget{
-  @override
-  SmartHomeMainBodyState createState() => SmartHomeMainBodyState();
-}
-class SmartHomeMainBodyState extends State<SmartHomeMainBody>{
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-        child: Text(
-          'Wait for build',
-          style: TextStyle(
-              fontSize: 32.0,
-              color: Colors.lightGreen
-          ),
-        )
+  Widget getUserImage(){
+    if(user != null && user.containsKey('pic')){
+      if(accountPic.toString().isNotEmpty){
+        return Image.network(accountPic);
+      }
+    }
+    return Icon(
+      Icons.account_circle,
+      color: Colors.white,
+      size: 72,
     );
   }
 
+  Future<void> getDataCategories() async{
+    if(accountID != null && accountID.isNotEmpty){
+      DocumentReference account = firestore.collection('Users').doc('GOOGLE$accountID');
+      await account.get().then((value) {
+        Map<String, dynamic> categoriesMap = value.get('dataCategories');
+        categoriesMap.forEach((key, value) {
+          print('Find categories: $key, value: $value');
+          if(!dataCategoriesList.contains(value.toString())) {
+            dataCategoriesList.add(value.toString());
+          }
+        });
+      });
+    }
+    else{
+      dataCategoriesList.clear();
+    }
+  }
+  Future<void> refreshStreamData() async{
+    await getDataCategories();
+    setState(() {
+
+    });
+    return Future.delayed(Duration(seconds: 0));
+  }
+  Future<void> getStreamData(String key) async{
+    try{
+      CollectionReference collectionReference = firestore.collection('Users').doc('GOOGLE$accountID').collection(key);
+      await collectionReference.get().then((value){
+        List<QueryDocumentSnapshot<Object>> docs = value.docs;
+        if(docs.isEmpty) {
+          print('Collection is null');
+          return;
+        }
+        var amount = 0, total = 0.0;
+
+        docs.forEach((document) {
+          Map<String, dynamic> data = document.data() as Map<String, dynamic>;
+          print('Get document: $data');
+          if(data['value'] != null){
+            amount++;
+            total += data['value'];
+          }
+        });
+
+        print('The total data samples is $amount, and the avegrage value is: ${total/amount}');
+      });
+    }
+    catch(exception){
+      print('Get stream data error: $key, error: $exception');
+    }
+  }
+  Future<void> addNewDataCategories(){
+    //顯示新增監聽數據對話窗
+  }
+  Future<void> removeDataCategories(){
+    //跳轉到溫度頁面
+  }
 }

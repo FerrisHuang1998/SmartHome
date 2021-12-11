@@ -22,7 +22,8 @@ class AccountInfo extends StatelessWidget{
     dynamic argMap = ModalRoute.of(context).settings.arguments;
     user = {
       'name': argMap['name'].toString(),
-      'id': argMap['id'].toString()
+      'id': argMap['id'].toString(),
+      'pic': argMap['pic'].toString()
     };
 
     return Scaffold(
@@ -33,7 +34,7 @@ class AccountInfo extends StatelessWidget{
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           color: Colors.white,
-          onPressed: () => Navigator.of(context).pop('Hello, ${user['name']}'),
+          onPressed: () => Navigator.of(context).pop(user),
         ),
       ),
       body: AccountInfoBody(),
@@ -60,10 +61,10 @@ class AccountInfoBodySate extends State<AccountInfoBody>{
     BoxDecoration infoDecroation = BoxDecoration(
         color: Colors.white,
         boxShadow: [BoxShadow(
-          color: Colors.grey.withOpacity(0.5),
-          spreadRadius: 3.0,
-          offset: Offset(2, 2),
-          blurRadius: 5.0
+            color: Colors.grey.withOpacity(0.5),
+            spreadRadius: 3.0,
+            offset: Offset(2, 2),
+            blurRadius: 5.0
         )],
         borderRadius: BorderRadius.circular(24.0)
     );
@@ -76,62 +77,62 @@ class AccountInfoBodySate extends State<AccountInfoBody>{
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               Flexible(
-                flex: 4,
-                child: Container(
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                        image: getUserImage(),
-                        fit: BoxFit.fill
+                  flex: 4,
+                  child: Container(
+                    decoration: BoxDecoration(
+                        image: DecorationImage(
+                            image: getUserImage(),
+                            fit: BoxFit.fill
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(
+                            color: Colors.grey.withOpacity(0.5),
+                            offset: Offset(2, 2),
+                            blurRadius: 5.0,
+                            spreadRadius: 1.0
+                        )]
                     ),
-                    shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(
-                        color: Colors.grey.withOpacity(0.5),
-                        offset: Offset(2, 2),
-                        blurRadius: 5.0,
-                        spreadRadius: 1.0
-                    )]
-                  ),
-                  width: 150.0,
-                  height: 150.0,
-                )
+                    width: 150.0,
+                    height: 150.0,
+                  )
               ),
               Flexible(
-                flex: 6,
-                child: Container(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      Flexible(
-                        flex: 3,
-                        child: Text(
-                          '${(user.containsKey('name') && user['name'].isNotEmpty) ? user['name'] : '未登入'}',
-                          style: TextStyle(
-                              fontSize: 32.0
-                          ),
-                        )
-                      ),
-                      Flexible(
-                        flex: 2,
-                        child: Text(
-                          'ID: ${(user.containsKey('id') && user['id'].isNotEmpty) ? user['id'] : ''}',
-                          style: TextStyle(
-                              fontSize: 14.0
-                          ),
-                        )
-                      ),
-                      Flexible(
-                        flex: 2,
-                        child: Text(
-                          '上次登入日期:\n1970/01/01 00:00:05',
-                          style: TextStyle(
-                              fontSize: 16.0
+                  flex: 6,
+                  child: Container(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Flexible(
+                            flex: 3,
+                            child: Text(
+                              '${(user.containsKey('name') && user['name'].isNotEmpty) ? user['name'] : '未登入'}',
+                              style: TextStyle(
+                                  fontSize: 32.0
+                              ),
+                            )
+                        ),
+                        Flexible(
+                            flex: 2,
+                            child: Text(
+                              'ID: ${(user.containsKey('id') && user['id'].isNotEmpty) ? user['id'] : ''}',
+                              style: TextStyle(
+                                  fontSize: 14.0
+                              ),
+                            )
+                        ),
+                        Flexible(
+                          flex: 2,
+                          child: Text(
+                            '上次登入日期:\n1970/01/01 00:00:05',
+                            style: TextStyle(
+                                fontSize: 16.0
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  margin: EdgeInsets.all(4.0),
-                )
+                      ],
+                    ),
+                    margin: EdgeInsets.all(4.0),
+                  )
               )
             ],
           ),
@@ -154,27 +155,17 @@ class AccountInfoBodySate extends State<AccountInfoBody>{
         Column(
           children: [
             GoogleAuthButton(
-              darkMode: true,
-              onPressed: () async{
-                user = await signInWithGoogle();
-                updateUser('GOOGLE');
-                setState(() {
-                  if(user == null){
-                    user = {};
-                  }
-                });
-              }
+                darkMode: true,
+                onPressed: () async{
+                  user = await signInWithGoogle();
+                  updateUser('GOOGLE');
+                }
             ),
             FacebookAuthButton(
-              onPressed: ()async{
-                user = await signInWithFacebook();
-                updateUser('FB');
-                setState(() {
-                  if(user == null){
-                    user = {};
-                  }
-                });
-              }
+                onPressed: ()async{
+                  user = await signInWithFacebook();
+                  updateUser('FB');
+                }
             ),
             IconButton(
                 icon: Icon(Icons.logout),
@@ -204,9 +195,8 @@ class AccountInfoBodySate extends State<AccountInfoBody>{
     CollectionReference userRef = firestore.collection('Users');
     if(user == null){
       print('Login is cancel, please try again');
-      return;
     }
-    if(user['id'].isNotEmpty){
+    else if(user['id'].isNotEmpty){
       String documentID = signInMethod + user['id'];
       userRef.doc(documentID).get().then((value){
         Map<String, Object> data = value.data() as Map<String, Object>;
@@ -229,11 +219,18 @@ class AccountInfoBodySate extends State<AccountInfoBody>{
     else{
       print('Cannot get user');
     }
+    setState(() {
+      if(user == null){
+        user = {};
+      }
+    });
   }
   Future<void> userLogout() async{
     if(user.containsKey('name')){
       print('User logout');
-      user.clear();
+      user['name'] = '';
+      user['id'] = '';
+      user['pic'] = '';
     }
     else{
       print('No user need to log out');
@@ -260,7 +257,7 @@ class AccountInfoBodySate extends State<AccountInfoBody>{
     final LoginResult loginResult = await facebookAuth.login();
     if(loginResult.status == LoginStatus.success){
       final Map<String, dynamic> userData = await facebookAuth.getUserData(
-        fields: 'name, id, picture'
+          fields: 'name, id, picture'
       );
 
       Map<String, String> user = {
