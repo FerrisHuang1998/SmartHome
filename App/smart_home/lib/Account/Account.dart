@@ -1,3 +1,4 @@
+import 'User.dart';
 import 'package:auth_buttons/auth_buttons.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -8,10 +9,13 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-//TODO: AppBar actions login/logout method, login is complete, need to update user page
+/*
+TODO: 1. Logout Google/FB user,
+      2. user page obvious
+      3. user image limit with resolution(50x50 or other)
+*/
 
-//Size size = MediaQuery.of(context).size;
-Map<String, dynamic> user;
+User _user;
 
 class AccountInfo extends StatelessWidget{
 
@@ -19,12 +23,7 @@ class AccountInfo extends StatelessWidget{
 
   @override
   Widget build(BuildContext context) {
-    dynamic argMap = ModalRoute.of(context).settings.arguments;
-    user = {
-      'name': argMap['name'].toString(),
-      'id': argMap['id'].toString(),
-      'pic': argMap['pic'].toString()
-    };
+    _user = ModalRoute.of(context).settings.arguments as User;
 
     return Scaffold(
       appBar: AppBar(
@@ -34,7 +33,7 @@ class AccountInfo extends StatelessWidget{
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           color: Colors.white,
-          onPressed: () => Navigator.of(context).pop(user),
+          onPressed: () => Navigator.of(context).pop(_user),
         ),
       ),
       body: AccountInfoBody(),
@@ -53,118 +52,93 @@ class AccountInfoBody extends StatefulWidget{
 
 class AccountInfoBodySate extends State<AccountInfoBody>{
   FirebaseFirestore firestore = FirebaseFirestore.instance;
+  BoxDecoration infoDecroation = BoxDecoration(
+      color: Colors.white,
+      boxShadow: [BoxShadow(
+          color: Colors.grey.withOpacity(0.3),
+          spreadRadius: 1.0,
+          offset: Offset(0, 2),
+      )],
+      borderRadius: BorderRadius.circular(16.0)
+  );
 
   AccountInfoBodySate({Key key});
 
   @override
   Widget build(BuildContext context) {
-    BoxDecoration infoDecroation = BoxDecoration(
-        color: Colors.white,
-        boxShadow: [BoxShadow(
-            color: Colors.grey.withOpacity(0.5),
-            spreadRadius: 3.0,
-            offset: Offset(2, 2),
-            blurRadius: 5.0
-        )],
-        borderRadius: BorderRadius.circular(24.0)
-    );
-
+    Size screenSize = MediaQuery.of(context).size;
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         Container(
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              Flexible(
-                  flex: 4,
-                  child: Container(
-                    decoration: BoxDecoration(
-                        image: DecorationImage(
-                            image: getUserImage(),
-                            fit: BoxFit.fill
-                        ),
-                        shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(
-                            color: Colors.grey.withOpacity(0.5),
-                            offset: Offset(2, 2),
-                            blurRadius: 5.0,
-                            spreadRadius: 1.0
-                        )]
-                    ),
-                    width: 150.0,
-                    height: 150.0,
-                  )
+              Container(
+                margin: EdgeInsets.all(10.0),
+                child: getUserImage(),
               ),
-              Flexible(
-                  flex: 6,
-                  child: Container(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        Flexible(
-                            flex: 3,
-                            child: Text(
-                              '${(user.containsKey('name') && user['name'].isNotEmpty) ? user['name'] : '未登入'}',
-                              style: TextStyle(
-                                  fontSize: 32.0
-                              ),
-                            )
+              Expanded(
+                child: Container(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '${_user.getName().isEmpty ? '未登入' : _user.getName()}',
+                        style: TextStyle(
+                            fontSize: 24.0
                         ),
-                        Flexible(
-                            flex: 2,
-                            child: Text(
-                              'ID: ${(user.containsKey('id') && user['id'].isNotEmpty) ? user['id'] : ''}',
-                              style: TextStyle(
-                                  fontSize: 14.0
-                              ),
-                            )
+                      ),
+                      Text(
+                        '${_user.getId().isEmpty ? 'ID' : _user.getId()}',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 14.0,
                         ),
-                        Flexible(
-                          flex: 2,
-                          child: Text(
-                            '上次登入日期:\n1970/01/01 00:00:05',
-                            style: TextStyle(
-                                fontSize: 16.0
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    margin: EdgeInsets.all(4.0),
-                  )
+                      ),
+                    ],
+                  ),
+                )
               )
             ],
           ),
           decoration: infoDecroation,
-          height: 250.0,
-          width: 350,
+          height: screenSize.height/4,
           margin: EdgeInsets.all(20.0),
         ),
         Container(
-          child: Text(
-            '活動紀錄',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 28.0),
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                      child: Text(
+                        '活動紀錄',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 28.0),
+                      )
+                  )
+                ],
+              ),
+              Text('')
+            ],
           ),
           decoration: infoDecroation,
-          height: 150,
-          width: 350,
-          margin: EdgeInsets.all(10.0),
+          margin: EdgeInsets.all(20.0),
         ),
         Column(
           children: [
             GoogleAuthButton(
                 darkMode: true,
                 onPressed: () async{
-                  user = await signInWithGoogle();
-                  updateUser('GOOGLE');
+                  await signInWithGoogle();
+                  updateUser();
                 }
             ),
             FacebookAuthButton(
                 onPressed: ()async{
-                  user = await signInWithFacebook();
-                  updateUser('FB');
+                  await signInWithFacebook();
+                  updateUser();
                 }
             ),
             IconButton(
@@ -177,95 +151,83 @@ class AccountInfoBodySate extends State<AccountInfoBody>{
     );
   }
 
-  ImageProvider getUserImage(){
-    if(user != null && user.containsKey('pic')){
-      if(user['pic'].toString().isNotEmpty){
-        return NetworkImage(user['pic']);
+  Widget getUserImage(){
+    try{
+      if(_user.getPicture().isNotEmpty){
+        return Image.network(_user.getPicture());
       }
     }
-    return AssetImage('images/user.png');
+    catch(error){
+      print('Get user image error: $error');
+    }
+    return Image.asset('images/user.png');
   }
 
-  void updateUser(String signInMethod){
-    /*print('Get user:');
-    for(String key in user.keys){
-      print('$key: ${user[key]}');
-    }*/
-
+  void updateUser(){
     CollectionReference userRef = firestore.collection('Users');
-    if(user == null){
-      print('Login is cancel, please try again');
+    if(_user.getId() == null){
+      print('找不到使用者ID');
     }
-    else if(user['id'].isNotEmpty){
-      String documentID = signInMethod + user['id'];
-      userRef.doc(documentID).get().then((value){
-        Map<String, Object> data = value.data() as Map<String, Object>;
-        if(data != null){
-          print('Update last login time...');
-          data.addAll(user);
-          data['lastLogin'] = FieldValue.serverTimestamp();
-          userRef.doc(documentID).update(data);
-        }
-        else{
-          print('New user is login, wait a sec...');
-          data = {
+    else if(_user.getId().isEmpty){
+      print('使用者ID為空');
+    }
+    else{
+      DocumentReference userDocumentReference = firestore.collection('Users').doc(_user.getId());
+      userDocumentReference.get()
+      .then((documentSnapshot){
+        dynamic document = documentSnapshot.data();
+        if(document == null){
+          print('新用戶登入');
+          Map<String, dynamic> data = {
+            'name': _user.getName(),
+            'id': _user.getId(),
+            'pic': _user.getPicture(),
             'lastLogin': FieldValue.serverTimestamp()
           };
-          data.addAll(user);
-          userRef.doc(documentID).set(data);
+          userDocumentReference.set(data)
+          .then((value) => {})
+          .catchError((error) {
+            print('Add new user document with error: $error');
+          });
         }
-      }).catchError((error) => print('Get document with error: $error'));
-    }
-    else{
-      print('Cannot get user');
+        else{
+          print('更新上次登入時間');
+          userDocumentReference.update({'lastLogin': FieldValue.serverTimestamp()});
+        }
+      })
+      .catchError((error) => print('Get document with error: $error'));
     }
     setState(() {
-      if(user == null){
-        user = {};
+
+    });
+  }
+  void userLogout(){
+    _user.clear();
+    setState(() {
+      print('登出');
+    });
+  }
+
+  Future<void> signInWithGoogle() async{
+    try{
+      final GoogleSignInAccount googleUser = await GoogleSignIn().signIn();
+      _user.set(googleUser.displayName, 'GOOGLE' + googleUser.id, googleUser.photoUrl);
+    }
+    catch(error){
+      print('Google登入失敗: $error');
+    }
+  }
+  Future<void> signInWithFacebook() async{
+    try{
+      final FacebookAuth facebookAuth = FacebookAuth.instance;
+      final LoginResult loginResult = await facebookAuth.login();
+      if(loginResult.status == LoginStatus.success){
+        final Map<String, dynamic> userData = await facebookAuth.getUserData(fields: 'name, id, picture');
+        _user.set(userData['name'], 'FB' + userData['id'], userData['picture']['data']['url']);
       }
-    });
-  }
-  Future<void> userLogout() async{
-    if(user.containsKey('name')){
-      print('User logout');
-      user['name'] = '';
-      user['id'] = '';
-      user['pic'] = '';
     }
-    else{
-      print('No user need to log out');
-    }
-    setState(() {
-
-    });
-  }
-
-  Future<Map<String, String>> signInWithGoogle() async{
-    final GoogleSignInAccount googleUser = await GoogleSignIn().signIn();
-    Map<String, String> user = {
-      'name': '',
-      'id': '',
-      'pic': '',
-    };
-    user['name'] = googleUser.displayName;
-    user['id'] = googleUser.id;
-    user['pic'] = googleUser.photoUrl;
-    return user;
-  }
-  Future<Map<String, String>> signInWithFacebook() async{
-    final FacebookAuth facebookAuth = FacebookAuth.instance;
-    final LoginResult loginResult = await facebookAuth.login();
-    if(loginResult.status == LoginStatus.success){
-      final Map<String, dynamic> userData = await facebookAuth.getUserData(
-          fields: 'name, id, picture'
-      );
-
-      Map<String, String> user = {
-        'name': userData['name'],
-        'id': userData['id'],
-        'pic': userData['picture']['data']['url'],
-      };
-      return user;
+    catch(error){
+      print('Facebook登入失敗: $error');
     }
   }
 }
