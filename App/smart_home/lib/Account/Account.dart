@@ -219,10 +219,9 @@ class AccountInfoBodySate extends State<AccountInfoBody>{
   }
   Future<void> signInWithFacebook() async{
     try{
-      final FacebookAuth facebookAuth = FacebookAuth.instance;
-      final LoginResult loginResult = await facebookAuth.login();
+      final LoginResult loginResult = await FacebookAuth.i.login();
       if(loginResult.status == LoginStatus.success){
-        final Map<String, dynamic> userData = await facebookAuth.getUserData(fields: 'name, id, picture');
+        final Map<String, dynamic> userData = await FacebookAuth.i.getUserData(fields: 'name, id, picture');
         _user.set(userData['name'], 'FB' + userData['id'], userData['picture']['data']['url']);
       }
     }
